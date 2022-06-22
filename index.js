@@ -5,6 +5,23 @@ let ready = false;
 
 let messages = [];
 
+function loggingEvent2Message(loggingEvent, config) {
+    console.log(loggingEvent);
+    return {
+        timestamp: new Date().getTime().toString(),
+        value: JSON.stringify({
+            _source: config.source + '-' + os.hostname(),
+            _message: loggingEvent.data[0],
+            _level: loggingEvent.level.levelStr,
+            _pid: loggingEvent.pid,
+            _callStack: loggingEvent.callStack.trim(),
+            _category: loggingEvent.categoryName,
+            _file: loggingEvent.fileName + ':' + loggingEvent.lineNumber,
+            _context: JSON.stringify(loggingEvent.context)
+        })
+    }
+}
+
 const kafkaAppender = {
     configure(config) {
         const producer = new Kafka.Kafka({
@@ -21,6 +38,7 @@ const kafkaAppender = {
             });
             messages = [];
         });
+
         producer.on('producer.disconnect', () => {
             ready = false;
         });
@@ -29,24 +47,10 @@ const kafkaAppender = {
             if (ready) {
                 producer.send({
                     topic: config.topic,
-                    messages: [
-                        {
-                            timestamp: new Date().getTime().toString(),
-                            value: JSON.stringify({
-                                _source: config.source + '-' + os.hostname(),
-                                _message: loggingEvent.data[0]
-                            })
-                        }
-                    ]
+                    messages: [loggingEvent2Message(loggingEvent, config)]
                 })
             } else {
-                messages.push({
-                    timestamp: new Date().getTime().toString(),
-                    value: JSON.stringify({
-                        _source: config.source + '-' + os.hostname(),
-                        _message: loggingEvent.data[0]
-                    })
-                });
+                messages.push(loggingEvent2Message(loggingEvent, config));
             }
         };
     }
