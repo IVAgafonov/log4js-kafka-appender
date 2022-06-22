@@ -6,7 +6,6 @@ let ready = false;
 let messages = [];
 
 function loggingEvent2Message(loggingEvent, config) {
-    console.log(loggingEvent);
     return {
         timestamp: new Date().getTime().toString(),
         value: JSON.stringify({
