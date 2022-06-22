@@ -9,9 +9,10 @@ function loggingEvent2Message(loggingEvent, config) {
     return {
         timestamp: new Date().getTime().toString(),
         value: JSON.stringify({
-            _source: config.source + '-' + os.hostname(),
+            _source: config.source + '@' + os.hostname(),
             _message: loggingEvent.data[0],
             _level: loggingEvent.level.levelStr,
+            _inputname: 'nodejs_logs',
             _pid: loggingEvent.pid,
             _callStack: loggingEvent.callStack.trim(),
             _category: loggingEvent.categoryName,
