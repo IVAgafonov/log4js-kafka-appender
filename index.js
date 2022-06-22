@@ -1,15 +1,14 @@
-import {Kafka} from "kafkajs";
-
-import * as os from "os";
+const Kafka = require('kafkajs');
+const os = require('os');
 
 let ready = false;
 
 let messages = [];
 
-export const kafkaAppender = {
+const kafkaAppender = {
     configure(config) {
-        const producer =  new Kafka({
-            clientId: 'log-producer',
+        const producer = new Kafka.Kafka({
+            clientId: 'log4js-kafka-appender',
             brokers: config.bootstrap
         }).producer();
         producer.connect();
@@ -52,3 +51,5 @@ export const kafkaAppender = {
         };
     }
 }
+
+exports.configure = kafkaAppender.configure;
