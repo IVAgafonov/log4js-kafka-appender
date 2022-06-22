@@ -7,17 +7,17 @@ let messages = [];
 
 function loggingEvent2Message(loggingEvent, config) {
     return {
-        timestamp: new Date().getTime().toString(),
         value: JSON.stringify({
-            _source: config.source + '@' + os.hostname(),
-            _message: loggingEvent.data[0],
-            _level: loggingEvent.level.levelStr,
-            _inputname: 'nodejs_logs',
-            _pid: loggingEvent.pid,
-            _callStack: loggingEvent.callStack.trim(),
-            _category: loggingEvent.categoryName,
-            _file: loggingEvent.fileName + ':' + loggingEvent.lineNumber,
-            _context: JSON.stringify(loggingEvent.context)
+            timestamp: Math.round(new Date().getTime() / 1000),
+            source: config.source + '@' + os.hostname(),
+            message: loggingEvent.data[0],
+            level: loggingEvent.level.levelStr,
+            inputname: 'nodejs_logs',
+            pid: loggingEvent.pid,
+            callStack: loggingEvent.callStack.trim(),
+            category: loggingEvent.categoryName,
+            file: loggingEvent.fileName + ':' + loggingEvent.lineNumber,
+            context: JSON.stringify(loggingEvent.context)
         })
     }
 }
