@@ -1,0 +1,28 @@
+{
+  "name": "@iagafonov/log4js-kafka-appender",
+  "version": "1.0.0",
+  "description": "Log4js kafka appender",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/IVAgafonov/log4js-kafka-appender.git"
+  },
+  "keywords": [
+    "log4js",
+    "kafka",
+    "appender"
+  ],
+  "author": "IAgafonov",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/IVAgafonov/log4js-kafka-appender/issues"
+  },
+  "homepage": "https://github.com/IVAgafonov/log4js-kafka-appender#readme",
+  "dependencies": {
+    "kafkajs": "^2.0.2",
+    "os": "^0.1.2"
+  }
+}
