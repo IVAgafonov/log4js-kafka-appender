@@ -8,7 +8,7 @@ let messages = [];
 function loggingEvent2Message(loggingEvent, config) {
     return {
         value: JSON.stringify({
-            timestamp: Math.round(new Date().getTime() / 1000),
+            timestamp: new Date().getTime() / 1000,
             source: config.source + '@' + os.hostname(),
             message: loggingEvent.data[0],
             level: loggingEvent.level.levelStr,
@@ -19,7 +19,7 @@ function loggingEvent2Message(loggingEvent, config) {
             file: loggingEvent.fileName + ':' + loggingEvent.lineNumber,
             context: JSON.stringify(loggingEvent.context)
         })
-    }
+    };
 }
 
 const kafkaAppender = {
