@@ -14,7 +14,7 @@ function loggingEvent2Message(loggingEvent, config) {
             level: loggingEvent.level.levelStr,
             inputname: 'nodejs_logs',
             pid: loggingEvent.pid,
-            callStack: loggingEvent.callStack.trim(),
+            callStack: loggingEvent.callStack?.trim() || loggingEvent.data[1] || '',
             category: loggingEvent.categoryName,
             file: loggingEvent.fileName + ':' + loggingEvent.lineNumber,
             context: JSON.stringify(loggingEvent.context)
