@@ -1,4 +1,4 @@
-const Kafka = require('kafkajs');
+const RdKafka = require('node-rdkafka');
 const os = require('os');
 
 let ready = false;
@@ -6,49 +6,55 @@ let ready = false;
 let messages = [];
 
 function loggingEvent2Message(loggingEvent, config) {
-    return {
-        value: JSON.stringify({
-            timestamp: new Date().getTime() / 1000,
-            source: config.source + '@' + os.hostname(),
-            message: loggingEvent.data[0],
-            level: loggingEvent.level.levelStr,
-            inputname: 'nodejs_logs',
-            pid: loggingEvent.pid,
-            callStack: loggingEvent.callStack?.trim() || loggingEvent.data[1] || '',
-            category: loggingEvent.categoryName,
-            file: loggingEvent.fileName + ':' + loggingEvent.lineNumber,
-            context: JSON.stringify(loggingEvent.context)
-        })
-    };
+    return Buffer.from(JSON.stringify({
+        timestamp: new Date().getTime() / 1000,
+        source: config.source + '@' + os.hostname(),
+        message: loggingEvent.data[0],
+        level: loggingEvent.level.levelStr,
+        inputname: 'nodejs_logs',
+        pid: loggingEvent.pid,
+        callStack: loggingEvent.callStack?.trim() || loggingEvent.data[1] || '',
+        category: loggingEvent.categoryName,
+        file: loggingEvent.fileName + ':' + loggingEvent.lineNumber,
+        context: JSON.stringify(loggingEvent.context)
+    }));
 }
 
 const kafkaAppender = {
     configure(config) {
-        const producer = new Kafka.Kafka({
-            clientId: 'log4js-kafka-appender',
-            brokers: config.bootstrap
-        }).producer();
-        producer.connect();
+        const producer = new RdKafka.Producer({
+            //debug: 'all',
+            'client.id': 'customer-report-node',
+            'metadata.broker.list': config.bootstrap,
+        });
 
-        producer.on('producer.connect', () => {
+        producer.on('event.log', function(log) {
+            switch (log.severity) {
+                case 0: console.trace(log.message); break;
+                case 7: console.debug(log.message); break;
+                case 6: console.info(log.message); break;
+                case 4: console.warn(log.message); break;
+                case 3: console.error(log.message); break;
+                default:
+                    console.info(log.message);
+            }
+        });
+
+        producer.on('ready', () => {
             ready = true;
-            producer.send({
-                topic: config.topic,
-                messages
-            });
+            messages.forEach(m => producer.produce(config.topic, null, m));
             messages = [];
         });
 
-        producer.on('producer.disconnect', () => {
+        producer.on('disconnected', () => {
             ready = false;
         });
 
+        producer.connect();
+
         return (loggingEvent) => {
             if (ready) {
-                producer.send({
-                    topic: config.topic,
-                    messages: [loggingEvent2Message(loggingEvent, config)]
-                })
+                producer.produce(config.topic, null, loggingEvent2Message(loggingEvent, config));
             } else {
                 messages.push(loggingEvent2Message(loggingEvent, config));
             }
