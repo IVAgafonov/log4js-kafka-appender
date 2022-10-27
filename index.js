@@ -5,10 +5,16 @@ let ready = false;
 
 let messages = [];
 
+const hostname = os.hostname();
+const projectName = process.env.PROJECT_NAME || '';
+const podName = process.env.POD_NAME || '';
+
 function loggingEvent2Message(loggingEvent, config) {
     return Buffer.from(JSON.stringify({
         timestamp: new Date().getTime() / 1000,
-        source: config.source + '@' + os.hostname(),
+        source: config.source + '@' + hostname,
+        projectName,
+        podName,
         message: loggingEvent.data[0],
         level: loggingEvent.level.levelStr,
         inputname: 'nodejs_logs',
