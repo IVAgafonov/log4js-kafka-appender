@@ -7,7 +7,7 @@ let messages = [];
 
 const hostname = os.hostname();
 const projectName = process.env.PROJECT_NAME || '';
-const podName = process.env.POD_NAME || '';
+const podName = process.env.HOSTNAME || '';
 const branch = process.env.BRANCH || '';
 
 function loggingEvent2Message(loggingEvent, config) {
