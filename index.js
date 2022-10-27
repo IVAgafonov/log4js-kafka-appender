@@ -8,6 +8,7 @@ let messages = [];
 const hostname = os.hostname();
 const projectName = process.env.PROJECT_NAME || '';
 const podName = process.env.POD_NAME || '';
+const branch = process.env.BRANCH || '';
 
 function loggingEvent2Message(loggingEvent, config) {
     return Buffer.from(JSON.stringify({
@@ -15,6 +16,7 @@ function loggingEvent2Message(loggingEvent, config) {
         source: config.source + '@' + hostname,
         projectName,
         podName,
+        branch,
         message: loggingEvent.data[0],
         level: loggingEvent.level.levelStr,
         inputname: 'nodejs_logs',
