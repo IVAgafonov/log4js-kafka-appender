@@ -62,7 +62,11 @@ const kafkaAppender = {
 
         return (loggingEvent) => {
             if (ready) {
-                producer.produce(config.topic, null, loggingEvent2Message(loggingEvent, config));
+                try {
+                    producer.produce(config.topic, null, loggingEvent2Message(loggingEvent, config));
+                } catch (e) {
+                    console.error(`Error during processing log: ${e.message || e}`);
+                }
             } else {
                 messages.push(loggingEvent2Message(loggingEvent, config));
             }
