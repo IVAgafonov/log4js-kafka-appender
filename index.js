@@ -32,7 +32,7 @@ const kafkaAppender = {
     configure(config) {
         const producer = new RdKafka.Producer({
             //debug: 'all',
-            'client.id': 'customer-report-node',
+            'client.id': config.source,
             'metadata.broker.list': config.bootstrap,
         });
 
