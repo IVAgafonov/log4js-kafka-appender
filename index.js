@@ -1,14 +1,15 @@
-const RdKafka = require('node-rdkafka');
 const os = require('os');
+const {Kafka, logLevel} = require("kafkajs");
 
-let ready = false;
-
-let messages = [];
+process.env['KAFKAJS_NO_PARTITIONER_WARNING'] = 1;
 
 const hostname = os.hostname();
 const projectName = process.env.PROJECT_NAME || '';
 const podName = process.env.HOSTNAME || '';
 const branch = process.env.BRANCH || '';
+
+let messages = [];
+let connected = false;
 
 function loggingEvent2Message(loggingEvent, config) {
     return Buffer.from(JSON.stringify({
@@ -30,43 +31,41 @@ function loggingEvent2Message(loggingEvent, config) {
 
 const kafkaAppender = {
     configure(config) {
-        const producer = new RdKafka.Producer({
-            //debug: 'all',
-            'client.id': config.source,
-            'metadata.broker.list': config.bootstrap,
-        });
-
-        producer.on('event.log', function(log) {
-            switch (log.severity) {
-                case 0: console.trace(log.message); break;
-                case 7: console.debug(log.message); break;
-                case 6: console.info(log.message); break;
-                case 4: console.warn(log.message); break;
-                case 3: console.error(log.message); break;
-                default:
-                    console.info(log.message);
+        const producer = new Kafka({
+            brokers: config.bootstrap,
+            clientId: config.source,
+            logCreator: (level) => (logEntry) => {
+                switch (level) {
+                    case logLevel.DEBUG:
+                        return console.debug(logEntry.log.message);
+                    case logLevel.ERROR:
+                        return console.error(logEntry.log.message);
+                    case logLevel.WARN:
+                        return console.warn(logEntry.log.message);
+                    default:
+                        return console.log(logEntry.log.message);
+                }
             }
+        }).producer({
+            retry: {
+                initialRetryTime: 10,
+                multiplier: 10,
+                retries: 10,
+                restartOnFailure: async (e) => { console.error(`Kafka failure: ${e.message || e}`); return true; }
+            },
+            allowAutoTopicCreation: false,
         });
 
-        producer.on('ready', () => {
-            ready = true;
-            messages.forEach(m => producer.produce(config.topic, null, m));
-            messages = [];
+        producer.connect().then(() => {
+            connected = true;
+            messages.forEach(_ => producer.send({topic: config.topic, messages: [{value: _}]})
+                .catch(e => console.error(`Error during processing log: ${e.message || e}`)));
         });
-
-        producer.on('disconnected', () => {
-            ready = false;
-        });
-
-        producer.connect();
 
         return (loggingEvent) => {
-            if (ready) {
-                try {
-                    producer.produce(config.topic, null, loggingEvent2Message(loggingEvent, config));
-                } catch (e) {
-                    console.error(`Error during processing log: ${e.message || e}`);
-                }
+            if (connected) {
+                producer.send({topic: config.topic, messages: [{value: loggingEvent2Message(loggingEvent, config)}]})
+                    .catch(e => console.error(`Error during processing log: ${e.message || e}`));
             } else {
                 messages.push(loggingEvent2Message(loggingEvent, config));
             }
