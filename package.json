@@ -1,6 +1,6 @@
 {
   "name": "@igor-agafonov/log4js-kafka-appender",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Log4js kafka appender",
   "main": "index.js",
   "scripts": {
