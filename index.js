@@ -8,8 +8,14 @@ const projectName = process.env.PROJECT_NAME || '';
 const podName = process.env.HOSTNAME || '';
 const branch = process.env.BRANCH || '';
 
-let messages = [];
+let delayedMessages = [];
 let connected = false;
+
+process.on('exit', () => {
+    if (delayedMessages.length) {
+        console.error("Unprocessed messages left: " + delayedMessages.length)
+    }
+})
 
 function loggingEvent2Message(loggingEvent, config) {
     return Buffer.from(JSON.stringify({
@@ -24,7 +30,7 @@ function loggingEvent2Message(loggingEvent, config) {
         pid: loggingEvent.pid,
         callStack: loggingEvent.callStack?.trim() || loggingEvent.data[1] || '',
         category: loggingEvent.categoryName,
-        file: loggingEvent.fileName + ':' + loggingEvent.lineNumber,
+        file: loggingEvent.fileName ? loggingEvent.fileName + ':' + loggingEvent.lineNumber : 'unknown',
         context: JSON.stringify(loggingEvent.context)
     }));
 }
@@ -34,6 +40,12 @@ const kafkaAppender = {
         const producer = new Kafka({
             brokers: config.bootstrap,
             clientId: config.source,
+            retry: {
+                initialRetryTime: 20,
+                multiplier: 100,
+                retries: 100,
+                restartOnFailure: async (e) => { console.error(`Kafka failure: ${e.message || e}`); return true; }
+            },
             logCreator: (level) => (logEntry) => {
                 switch (level) {
                     case logLevel.DEBUG:
@@ -48,9 +60,9 @@ const kafkaAppender = {
             }
         }).producer({
             retry: {
-                initialRetryTime: 10,
-                multiplier: 10,
-                retries: 10,
+                initialRetryTime: 20,
+                multiplier: 100,
+                retries: 100,
                 restartOnFailure: async (e) => { console.error(`Kafka failure: ${e.message || e}`); return true; }
             },
             allowAutoTopicCreation: false,
@@ -58,16 +70,30 @@ const kafkaAppender = {
 
         producer.connect().then(() => {
             connected = true;
-            messages.forEach(_ => producer.send({topic: config.topic, messages: [{value: _}]})
-                .catch(e => console.error(`Error during processing log: ${e.message || e}`)));
         });
 
+        producer.on('producer.connect', () => {
+            connected = true;
+        })
+
         return (loggingEvent) => {
+            let msg = {value: loggingEvent2Message(loggingEvent, config), timestamp: new Date().getTime().toString()}
+            let messagesToSend = [msg];
             if (connected) {
-                producer.send({topic: config.topic, messages: [{value: loggingEvent2Message(loggingEvent, config)}]})
-                    .catch(e => console.error(`Error during processing log: ${e.message || e}`));
+                if (delayedMessages.length) {
+                    messagesToSend = delayedMessages.concat(messagesToSend);
+                    delayedMessages = [];
+                }
+                messagesToSend.forEach(_ => producer.send({topic: config.topic, messages: [_]})
+                    //.then(r => console.log("message sent: " + JSON.parse(_.value.toString()).message))
+                    .catch(e => {
+                        delayedMessages.push(_)
+                        console.warn("error, buffer size: " + delayedMessages.length + "; push message to buffer: " + (e.message || e))
+                    }));
             } else {
-                messages.push(loggingEvent2Message(loggingEvent, config));
+                connected = false;
+                delayedMessages.push(msg);
+                console.warn("disconnected, push message to buffer. buffer size: " + delayedMessages.length)
             }
         };
     }
